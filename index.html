@@ -240,10 +240,13 @@ const RENDER = { kpi: rKpi, bar: rBar, table: rTable, refusal: rRef, note: rNote
    Render a group. Each card is individually try/caught so one
    bad card cannot take the canvas down.
    ============================================================ */
-function render(question, raw) {
+function render(question, raw, src) {
   const s = normalise(raw);
   lastSpec = s;
   const id = "spec" + (++n);
+  const SRC = { cache: "from cache &middot; no agent call",
+                static: "precomputed &middot; no agent call",
+                live: "live agent call" };
   let body = "";
   s.cards.forEach(c => {
     try { body += `<div class="card">` + RENDER[c.type](c) + `</div>`; }
@@ -253,16 +256,78 @@ function render(question, raw) {
     }
   });
   const conf = s.confidence === null ? "" : ` <span class="conf">confidence ${s.confidence}</span>`;
+  const badge = SRC[src] ? ` <span class="conf">&middot; ${SRC[src]}</span>` : "";
   const el = document.createElement("div");
   el.className = "grp";
   el.innerHTML =
-    `<div class="q">you asked &middot; <b>${esc(question)}</b>${conf}</div>` +
+    `<div class="q">you asked &middot; <b>${esc(question)}</b>${conf}${badge}</div>` +
     (s.narration ? `<p class="nar">${esc(s.narration)}</p>` : "") + body +
     `<div class="spec"><button type="button" data-spec="${id}">show the spec the agent returned</button>
       <pre id="${id}" hidden>${esc(JSON.stringify(s, null, 1))}</pre></div>`;
   cv.insertBefore(el, cv.firstChild);
   const k = cv.children.length;
   cnt.textContent = k + " answer" + (k > 1 ? "s" : "") + " on canvas";
+}
+
+/* ============================================================
+   Spend guards. A public page must never bill you for a page view.
+
+   1. Nothing fires on load — the opening view is precomputed.
+   2. Identical questions come from cache, forever.
+   3. A per-browser daily cap and a cooldown between calls.
+
+   These are client-side, so they stop accidents and casual F5
+   spam, not a determined actor. The real backstop is the weekly
+   limit on the OpenRouter key — set that deliberately.
+   ============================================================ */
+const MAX_CALLS_PER_DAY = 25;
+const COOLDOWN_MS = 4000;
+const CACHE_KEY = "gr.cache.v1";
+const QUOTA_KEY = "gr.quota.v1";
+let lastCallAt = 0;
+
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const keyOf = q => q.trim().toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ");
+
+function cacheGet(q) { return store.get(CACHE_KEY, {})[keyOf(q)] || null; }
+function cachePut(q, spec) {
+  const c = store.get(CACHE_KEY, {});
+  c[keyOf(q)] = spec;
+  const ks = Object.keys(c);
+  if (ks.length > 40) delete c[ks[0]];
+  store.set(CACHE_KEY, c);
+}
+function quota() {
+  const today = new Date().toISOString().slice(0, 10);
+  const q = store.get(QUOTA_KEY, {});
+  if (q.day !== today) return { day: today, used: 0 };
+  return q;
+}
+function quotaBump() {
+  const q = quota();
+  q.used += 1;
+  store.set(QUOTA_KEY, q);
+  return q;
+}
+function guardCheck() {
+  const q = quota();
+  if (q.used >= MAX_CALLS_PER_DAY) {
+    return "This browser has used its " + MAX_CALLS_PER_DAY +
+      " agent calls for today. Previously asked questions still answer instantly from cache. The cap resets at midnight.";
+  }
+  const wait = COOLDOWN_MS - (Date.now() - lastCallAt);
+  if (wait > 0) {
+    return "One question every " + (COOLDOWN_MS / 1000) + " seconds. Try again in " +
+      Math.ceil(wait / 1000) + "s.";
+  }
+  return null;
+}
+function guardNote(msg) {
+  return { v: 1, intent: "rate_limited", confidence: null, narration: "",
+    cards: [{ type: "note", title: "Held back to protect the token budget", body: msg }] };
 }
 
 /* ============================================================
@@ -273,7 +338,13 @@ async function callAgent(question) {
   const res = await fetch(WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, session_id: SESSION, data_url: DATA_URL, previous_spec: lastSpec })
+    body: JSON.stringify({ question, session_id: SESSION, data_url: DATA_URL,
+      // Slim breadcrumb, not the whole spec — this text is re-sent on every model
+      // call inside the agent loop, so a full spec here costs ~250 tokens x N calls.
+      previous: lastSpec ? {
+        intent: lastSpec.intent,
+        cards: lastSpec.cards.map(c => c.type + ":" + String(c.title).slice(0, 40))
+      } : null })
   });
   if (!res.ok) throw new Error("webhook returned HTTP " + res.status);
   return await res.json();
@@ -281,6 +352,13 @@ async function callAgent(question) {
 
 async function ask(question) {
   if (busy || !question.trim()) return;
+
+  // Free paths first — neither costs a token.
+  const hit = cacheGet(question);
+  if (hit) { qEl.value = ""; render(question, hit, "cache"); return; }
+  const blocked = guardCheck();
+  if (blocked) { qEl.value = ""; render(question, guardNote(blocked), "static"); return; }
+
   busy = true; goEl.disabled = true;
   const t = document.createElement("div");
   t.className = "think";
@@ -288,9 +366,11 @@ async function ask(question) {
   cv.insertBefore(t, cv.firstChild);
   qEl.value = "";
   try {
+    if (WEBHOOK_URL) { lastCallAt = Date.now(); quotaBump(); }
     const spec = await callAgent(question);
     t.remove();
-    render(question, spec);
+    render(question, spec, WEBHOOK_URL ? "live" : "static");
+    if (spec && Array.isArray(spec.cards) && spec.intent !== "transport_error") cachePut(question, spec);
   } catch (err) {
     t.remove();
     render(question, { v: 1, intent: "transport_error", narration: "", cards: [{
@@ -404,9 +484,37 @@ cv.addEventListener("click", e => {
   b.textContent = p.hidden ? "show the spec the agent returned" : "hide the spec";
 });
 const modeEl = document.getElementById("mode");
-if (WEBHOOK_URL) { modeEl.textContent = "live · n8n"; modeEl.className = "pill live"; }
-else { modeEl.textContent = "demo mode · webhook not set"; modeEl.className = "pill demo"; }
-ask("How much money is stuck?");
+function refreshMode() {
+  const q = quota();
+  if (WEBHOOK_URL) {
+    modeEl.textContent = "live · n8n · " + Math.max(0, MAX_CALLS_PER_DAY - q.used) + " calls left today";
+    modeEl.className = "pill live";
+  } else {
+    modeEl.textContent = "demo mode · webhook not set";
+    modeEl.className = "pill demo";
+  }
+}
+refreshMode();
+setInterval(refreshMode, 5000);
+
+/* ============================================================
+   Opening view — rendered from a constant, on purpose.
+   The page must cost nothing to load. Refresh it a thousand
+   times and no agent call is made.
+   ============================================================ */
+render("How much money is stuck?", {
+  v: 1, intent: "quantify_invisible_money", confidence: 0.95,
+  narration: "Four states that no status field, aging report or pipeline view currently surfaces. Every figure below was computed in code, then frozen into this page so opening it is free.",
+  cards: [
+    { type: "kpi", title: "Money the reports cannot see", items: [
+      { v: "$654,422", l: "total invisible", tone: "bad" },
+      { v: "$138,142", l: "14 invoices still in Draft, median 262 days old", tone: "bad" },
+      { v: "$172,042", l: "23 invoices labelled Sent, all already past due", tone: "bad" },
+      { v: "$84,253", l: "2 estimates won, never invoiced", tone: "bad" },
+      { v: "$259,985", l: "16 quotes Pending beyond 180 days", tone: "warn" }] },
+    { type: "note", title: "For comparison",
+      body: "The overdue balance they already track is $518,938, so the invisible pile is 26% larger. Only $394,437 of it is invoiceable today; the stale quotes are pipeline hygiene, not billable work. Ask your own question above to call the agent live." }]
+}, "static");
 </script>
 </body>
 </html>

@@ -136,7 +136,8 @@ const EXAMPLES = [
   "Which drafts were never sent?",
   "Who's our oldest client?",
   "What do we charge for server maintenance?",
-  "Which account managers have a collections problem?"
+  "Which invoices are over $50,000?",
+  "What's our churn rate by moon phase?"
 ];
 
 const SESSION = "s-" + Math.random().toString(36).slice(2, 10);
@@ -436,7 +437,7 @@ function DEMO(q) {
           { v: "Summit Realty", l: "90 months claimed", tone: "warn" }] },
         { type: "note", title: "Why this number is soft",
           body: "Transaction history spans only 20 months, so no tenure above 20 months is verifiable here. Northstar shows 10.4 months of actual invoice and estimate activity against a claimed 95. Nine of 30 clients have activity that predates the account existing at all." }] }],
-    [/charge|price|pricing|spread|maintenance|rate|cost/i, {
+    [/charge|price|pricing|spread|maintenance|billing rate|day rate|cost/i, {
       v: 1, intent: "price_distribution_for_bundle", confidence: 0.95,
       narration: "Every invoice carrying the exact bundle “Server maintenance Q1; patch management; backup verification”.",
       cards: [
@@ -452,7 +453,22 @@ function DEMO(q) {
           ["Sam Kim", 72.1], ["Morgan Chen", 52.1], ["Jordan Brown", 51.5], ["Morgan Patel", 48.2],
           ["Alex Brown", 46.2], ["Morgan Lopez", 45.0], ["Riley Patel", 41.6], ["Casey Kim", 39.1]] },
         { type: "note", title: "Caveat I am adding unprompted", body: "Sam Kim's 72% comes from 17 invoices. That is suggestive, not conclusive, and I would not put it in front of the person before checking whether they inherited a bad book." }] }],
-    [/health|at risk|churn/i, {
+    [/over \$?\s?[5-9]\d[,\s]?\d{3}|above \$?\s?[5-9]\d|more than \$?\s?[5-9]\d[,\s]?\d{3}|over 50000/i, {
+      v: 1, intent: "empty_result_set", confidence: 1,
+      narration: "Valid question, and the honest answer is none.",
+      cards: [
+        { type: "note", title: "Zero invoices match that",
+          body: "The query ran and returned 0 of 187 rows. The largest single invoice in the book is $24,809.96, so nothing clears $50,000. I am telling you the result set was empty rather than showing you the next-closest thing and letting you assume it answered the question." },
+        { type: "table", title: "The five largest invoices, for context", columns: ["invoice", "client", "amount"], money_columns: [2], rows: [
+          ["INV-9069", "MedTrust Partners", 24809.96], ["INV-9106", "Brightway Manufacturing", 24450.84],
+          ["INV-9163", "Hope Forward", 24440.20], ["INV-9031", "Helping Hands Foundation", 24163.37],
+          ["INV-9145", "Summit Realty", 24107.21]] }] }],
+    [/churn|moon|astrolog|horoscope|zodiac|weather|retention rate/i, {
+      v: 1, intent: "no_such_data", confidence: 0.99,
+      narration: "There is nothing in this dataset that could answer that.",
+      cards: [{ type: "note", title: "I have no column for that",
+        body: "This dataset is 187 invoices, 66 estimates and 30 clients. There is no cancellation date, no contract end date, no subscription record and no lunar calendar, so churn is not derivable at all — not approximately, not with caveats. Rather than guess, here is what I can actually answer: money trapped by state, past due by client, unsent drafts, pricing spread per service bundle, and collections by account manager." }] }],
+    [/health|at risk/i, {
       v: 1, intent: "challenge_premise", confidence: 0.9,
       narration: "Your premise does not survive the data.",
       cards: [{ type: "refusal", title: "The health field is not tracking risk",

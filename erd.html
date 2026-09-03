@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 1, the relational diagram</title>
+<style>
+:root{
+  --bg:#faf9f7; --surface:#fff; --line:#e3e0d9; --line-2:#cec9be;
+  --fg:#1f1e1c; --fg-2:#5f5c56; --fg-3:#8b877f;
+  --ok-t:#0f6e56; --ok-b:#e1f5ee; --warn-t:#854f0b; --warn-b:#faeeda;
+  --bad-t:#a32d2d; --bad-b:#fcebeb; --pur-t:#534ab7; --pur-b:#eeedfe;
+  --blu-t:#185fa5; --blu-b:#e6f1fb; --cor-t:#993c1d; --cor-b:#faece7;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#16150f; --surface:#1e1d17; --line:#33322a; --line-2:#4a4840;
+  --fg:#f2f0ea; --fg-2:#b4b2a9; --fg-3:#888780;
+  --ok-t:#9fe1cb; --ok-b:#04342c; --warn-t:#fac775; --warn-b:#412402;
+  --bad-t:#f7c1c1; --bad-b:#501313; --pur-t:#cecbf6; --pur-b:#26215c;
+  --blu-t:#b5d4f4; --blu-b:#042c53; --cor-t:#f5c4b3; --cor-b:#4a1b0c;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 56px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--fg-2);font-size:14px;margin:0 0 18px;max-width:70ch;line-height:1.6}
+svg{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.tn{font-size:14px;font-weight:600}
+.tc,.pl,.ty,.ky,.cd,.lg,.l2{font-size:12px}
+.tc,.cd,.lg{fill:var(--fg-3)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:12.5px;color:var(--fg-2)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+footer{margin-top:22px;font-size:13px;color:var(--fg-3);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Step 1, what the three tabs actually are</h1>
+<p class="sub">Before touching AI I drew the thing as a database. One key joins everything, and it joins cleanly. The colours are how far I ended up trusting each column.</p>
+
+<svg viewBox="0 0 900 545" role="img" aria-label="Relational diagram of invoices, clients and estimates joined on client_id, with each column coloured by trustworthiness">
+<title>Relational diagram of the three source tables</title>
+
+<!-- invoices -->
+<rect x="20" y="76" width="260" height="259" rx="10" fill="var(--surface)" stroke="var(--line-2)" stroke-width="1"/>
+<text class="tn" x="34" y="100" fill="var(--fg)">invoices</text>
+<text class="tc" fill="var(--fg-3)" x="34" y="118">187 rows · 9 columns</text>
+<g><rect x="34" y="129" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="44" y="142" fill="var(--ok-t)">client_id</text><text class="ty" x="228" y="142" text-anchor="end" fill="var(--ok-t)">txt</text><text class="ky" x="258" y="142" text-anchor="end" fill="var(--ok-t)">FK</text></g>
+<g><rect x="34" y="151" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="44" y="164" fill="var(--ok-t)">invoice_id</text><text class="ty" x="228" y="164" text-anchor="end" fill="var(--ok-t)">txt</text><text class="ky" x="258" y="164" text-anchor="end" fill="var(--ok-t)">PK</text></g>
+<g><rect x="34" y="173" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="44" y="186" fill="var(--ok-t)">client_name</text><text class="ty" x="258" y="186" text-anchor="end" fill="var(--ok-t)">txt</text></g>
+<g><rect x="34" y="195" width="232" height="18" rx="4" fill="var(--warn-b)"/><text class="pl" x="44" y="208" fill="var(--warn-t)">issue_date</text><text class="ty" x="258" y="208" text-anchor="end" fill="var(--warn-t)">date</text></g>
+<g><rect x="34" y="217" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="44" y="230" fill="var(--ok-t)">due_date</text><text class="ty" x="258" y="230" text-anchor="end" fill="var(--ok-t)">date</text></g>
+<g><rect x="34" y="239" width="232" height="18" rx="4" fill="var(--warn-b)"/><text class="pl" x="44" y="252" fill="var(--warn-t)">amount</text><text class="ty" x="258" y="252" text-anchor="end" fill="var(--warn-t)">num</text></g>
+<g><rect x="34" y="261" width="232" height="18" rx="4" fill="var(--bad-b)"/><text class="pl" x="44" y="274" fill="var(--bad-t)">status</text><text class="ty" x="258" y="274" text-anchor="end" fill="var(--bad-t)">enum</text></g>
+<g><rect x="34" y="283" width="232" height="18" rx="4" fill="var(--warn-b)"/><text class="pl" x="44" y="296" fill="var(--warn-t)">line_items</text><text class="ty" x="258" y="296" text-anchor="end" fill="var(--warn-t)">txt</text></g>
+<g><rect x="34" y="305" width="232" height="18" rx="4" fill="var(--pur-b)"/><text class="pl" x="44" y="318" fill="var(--pur-t)">notes</text><text class="ty" x="258" y="318" text-anchor="end" fill="var(--pur-t)">txt</text></g>
+
+<!-- clients -->
+<rect x="320" y="76" width="260" height="191" rx="10" fill="var(--surface)" stroke="var(--line-2)" stroke-width="1"/>
+<text class="tn" x="334" y="100" fill="var(--fg)">clients</text>
+<text class="tc" fill="var(--fg-3)" x="334" y="118">30 rows · 6 columns</text>
+<g><rect x="334" y="129" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="344" y="142" fill="var(--ok-t)">client_id</text><text class="ty" x="528" y="142" text-anchor="end" fill="var(--ok-t)">txt</text><text class="ky" x="558" y="142" text-anchor="end" fill="var(--ok-t)">PK</text></g>
+<g><rect x="334" y="151" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="344" y="164" fill="var(--ok-t)">name</text><text class="ty" x="558" y="164" text-anchor="end" fill="var(--ok-t)">txt</text></g>
+<g><rect x="334" y="173" width="232" height="18" rx="4" fill="var(--bad-b)"/><text class="pl" x="344" y="186" fill="var(--bad-t)">industry</text><text class="ty" x="558" y="186" text-anchor="end" fill="var(--bad-t)">enum</text></g>
+<g><rect x="334" y="195" width="232" height="18" rx="4" fill="var(--bad-b)"/><text class="pl" x="344" y="208" fill="var(--bad-t)">account_age_months</text><text class="ty" x="558" y="208" text-anchor="end" fill="var(--bad-t)">int</text></g>
+<g><rect x="334" y="217" width="232" height="18" rx="4" fill="var(--warn-b)"/><text class="pl" x="344" y="230" fill="var(--warn-t)">primary_contact</text><text class="ty" x="558" y="230" text-anchor="end" fill="var(--warn-t)">txt</text></g>
+<g><rect x="334" y="239" width="232" height="18" rx="4" fill="var(--bad-b)"/><text class="pl" x="344" y="252" fill="var(--bad-t)">health</text><text class="ty" x="558" y="252" text-anchor="end" fill="var(--bad-t)">enum</text></g>
+
+<!-- estimates -->
+<rect x="620" y="76" width="260" height="213" rx="10" fill="var(--surface)" stroke="var(--line-2)" stroke-width="1"/>
+<text class="tn" x="634" y="100" fill="var(--fg)">estimates</text>
+<text class="tc" fill="var(--fg-3)" x="634" y="118">66 rows · 7 columns</text>
+<g><rect x="634" y="129" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="644" y="142" fill="var(--ok-t)">client_id</text><text class="ty" x="828" y="142" text-anchor="end" fill="var(--ok-t)">txt</text><text class="ky" x="858" y="142" text-anchor="end" fill="var(--ok-t)">FK</text></g>
+<g><rect x="634" y="151" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="644" y="164" fill="var(--ok-t)">estimate_id</text><text class="ty" x="828" y="164" text-anchor="end" fill="var(--ok-t)">txt</text><text class="ky" x="858" y="164" text-anchor="end" fill="var(--ok-t)">PK</text></g>
+<g><rect x="634" y="173" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="644" y="186" fill="var(--ok-t)">client_name</text><text class="ty" x="858" y="186" text-anchor="end" fill="var(--ok-t)">txt</text></g>
+<g><rect x="634" y="195" width="232" height="18" rx="4" fill="var(--ok-b)"/><text class="pl" x="644" y="208" fill="var(--ok-t)">issue_date</text><text class="ty" x="858" y="208" text-anchor="end" fill="var(--ok-t)">date</text></g>
+<g><rect x="634" y="217" width="232" height="18" rx="4" fill="var(--warn-b)"/><text class="pl" x="644" y="230" fill="var(--warn-t)">amount</text><text class="ty" x="858" y="230" text-anchor="end" fill="var(--warn-t)">num</text></g>
+<g><rect x="634" y="239" width="232" height="18" rx="4" fill="var(--bad-b)"/><text class="pl" x="644" y="252" fill="var(--bad-t)">status</text><text class="ty" x="858" y="252" text-anchor="end" fill="var(--bad-t)">enum</text></g>
+<g><rect x="634" y="261" width="232" height="18" rx="4" fill="var(--pur-b)"/><text class="pl" x="644" y="274" fill="var(--pur-t)">notes</text><text class="ty" x="858" y="274" text-anchor="end" fill="var(--pur-t)">txt</text></g>
+
+<!-- crow's foot: invoices N -> 1 clients -->
+<line x1="292" y1="138" x2="280" y2="130" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="292" y1="138" x2="280" y2="138" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="292" y1="138" x2="280" y2="146" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="292" y1="138" x2="310" y2="138" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="310" y1="131" x2="310" y2="145" stroke="var(--fg-3)" stroke-width="1.4"/>
+<!-- crow's foot: clients 1 -> N estimates -->
+<line x1="590" y1="131" x2="590" y2="145" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="590" y1="138" x2="608" y2="138" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="608" y1="138" x2="620" y2="130" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="608" y1="138" x2="620" y2="138" stroke="var(--fg-3)" stroke-width="1.4"/>
+<line x1="608" y1="138" x2="620" y2="146" stroke="var(--fg-3)" stroke-width="1.4"/>
+
+<text class="cd" fill="var(--fg-3)" x="20" y="362">invoices.client_id → clients.client_id · many to one, every client has at least one invoice</text>
+<text class="cd" fill="var(--fg-3)" x="20" y="380">estimates.client_id → clients.client_id · many to one, but 4 clients have no estimates at all</text>
+<text class="cd" fill="var(--fg-3)" x="20" y="398">client_id joins all 283 rows with zero orphans and zero id-to-name mismatches. The plumbing is clean. The contents are not.</text>
+
+<rect x="20" y="418" width="860" height="76" rx="10" fill="var(--surface)" stroke="var(--line-2)" stroke-width="1" stroke-dasharray="4 3"/>
+<text class="tn" x="34" y="441" fill="var(--fg)">then I added a second layer</text>
+<text class="tc" fill="var(--fg-3)" x="34" y="459">columns that did not exist, computed from the ones that did</text>
+<g><rect x="34" y="468" width="150" height="18" rx="4" fill="var(--blu-b)"/><text class="l2" x="42" y="481" fill="var(--blu-t)">true_state</text></g>
+<g><rect x="192" y="468" width="150" height="18" rx="4" fill="var(--blu-b)"/><text class="l2" x="200" y="481" fill="var(--blu-t)">days_past_due</text></g>
+<g><rect x="350" y="468" width="150" height="18" rx="4" fill="var(--blu-b)"/><text class="l2" x="358" y="481" fill="var(--blu-t)">price_index</text></g>
+<g><rect x="508" y="468" width="150" height="18" rx="4" fill="var(--blu-b)"/><text class="l2" x="516" y="481" fill="var(--blu-t)">tenure_gap</text></g>
+<g><rect x="666" y="468" width="200" height="18" rx="4" fill="var(--cor-b)"/><text class="l2" x="674" y="481" fill="var(--cor-t)">industry_derived + 3 more</text></g>
+</svg>
+
+<div class="legend">
+  <span><span class="sw" style="background:var(--ok-b);border:1px solid var(--ok-t)"></span>trustworthy</span>
+  <span><span class="sw" style="background:var(--warn-b);border:1px solid var(--warn-t)"></span>messy but usable</span>
+  <span><span class="sw" style="background:var(--bad-b);border:1px solid var(--bad-t)"></span>contradicts itself</span>
+  <span><span class="sw" style="background:var(--pur-b);border:1px solid var(--pur-t)"></span>free text, nothing reads it</span>
+  <span><span class="sw" style="background:var(--blu-b);border:1px solid var(--blu-t)"></span>added, computed</span>
+  <span><span class="sw" style="background:var(--cor-b);border:1px solid var(--cor-t)"></span>added, AI inferred</span>
+</div>
+
+<footer>
+Four of the six columns in <strong>clients</strong> can't be believed, and it's the table everything else hangs off.
+That's what sent me looking for what the reports don't show.
+</footer>
+</div>
+</body>
+</html>

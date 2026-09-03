@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 2, the leak chart</title>
+<style>
+:root{
+  --bg:#faf9f7; --surface:#fff; --surface-2:#f4f2ee; --line:#e3e0d9; --line-2:#cec9be;
+  --fg:#1f1e1c; --fg-2:#5f5c56; --fg-3:#8b877f;
+  --ok:#0f6e56; --warn:#854f0b; --bad:#a32d2d;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#16150f; --surface:#1e1d17; --surface-2:#26251d; --line:#33322a; --line-2:#4a4840;
+  --fg:#f2f0ea; --fg-2:#b4b2a9; --fg-3:#888780;
+  --ok:#5dcaa5; --warn:#efa027; --bad:#f09595;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 56px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--fg-2);font-size:14px;margin:0 0 6px;max-width:72ch;line-height:1.6}
+.cap{min-height:44px;font-size:13px;line-height:1.6;color:var(--fg-2);border-left:2px solid var(--line-2);
+  padding:8px 12px;margin:12px 0 10px}
+svg{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.cmp{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+.row{display:flex;align-items:center;gap:12px;margin-bottom:7px;font-size:13px;color:var(--fg-2)}
+.row .nm{width:210px;flex:none;color:var(--fg)}
+.row .tr{flex:1;height:17px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.row .fi{display:block;height:100%;border-radius:4px}
+.row .vl{width:96px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+footer{margin-top:20px;font-size:13px;color:var(--fg-3);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Step 2, where the money stops moving</h1>
+<p class="sub">Clients joins everything, so I followed every dollar through both books instead. Both sides balance to the cent. The four red bands are the ones no status field, aging report or pipeline view shows you.</p>
+<div class="cap" id="cap">Hover any band to see what is in it.</div>
+<svg viewBox="0 0 900 700" id="sv" role="img" aria-label="Flow of 2.6 million dollars across the invoice and estimate books into six end states"></svg>
+<div class="cmp" id="cmp"></div>
+<footer>
+Every dollar accounted for: $1,602,451 invoiced plus $1,000,582 quoted equals $2,603,033, and the six end states sum to the same figure.
+</footer>
+</div>
+
+<script>
+/* Exact cents throughout. Node heights are derived from the links below, so the
+   diagram balances by construction. Labels round only for display. */
+var N1=[
+ {id:'inv',l:['invoiced','$1,602,451','187 invoices'],
+  cap:'Every invoice ever raised. Only 48% of it has actually been collected.'},
+ {id:'quo',l:['quoted','$1,000,582','66 estimates'],
+  cap:'Every estimate ever issued. 25 won, 21 lost, 20 still sitting in Pending.'}];
+var N2=[
+ {id:'healthy',c:'ok',l1:'healthy, nothing to do',l2:'$1,429,672 · 55% of the total',
+  cap:'Paid invoices $773,328. Quotes properly closed as Lost $318,568. Wins that were actually billed $262,866. Quotes still inside 180 days $74,911.'},
+ {id:'overdue',c:'warn',l1:'overdue, correctly flagged',l2:'$518,938 · 53 invoices',
+  cap:'They already know about this one. It lands on every AR report they run. This is the visible problem, and it is the smaller one.'},
+ {id:'sent',c:'bad',l1:'past due, labelled Sent',l2:'$172,042 · 23 invoices',
+  cap:'23 invoices carry the status Sent. Every one is already past its due date, 16 of them by over a year. Their aging report counts all of it as current.'},
+ {id:'draft',c:'bad',l1:'never sent, still Draft',l2:'$138,142 · 14 invoices',
+  cap:'Median age 262 days, oldest 466. The work was delivered and the invoice was written. It was never sent.'},
+ {id:'wonNI',c:'bad',l1:'won, never invoiced',l2:'$84,253 · 2 estimates',
+  cap:'Pinnacle Advisors $47,512 and Bayside Resort $36,741, both marked Won, with no invoice ever raised for that client afterwards.'},
+ {id:'stale',c:'bad',l1:'quoted, stale past 180 days',l2:'$259,985 · 16 estimates',
+  cap:'Median age across all Pending estimates is 319 days. Pending is not a stage in this business, it is where quotes go to die.'}];
+var L=[
+ {s:'inv',d:'healthy',v:773327.99},{s:'inv',d:'overdue',v:518938.25},
+ {s:'inv',d:'sent',v:172042.43},{s:'inv',d:'draft',v:138142.23},
+ {s:'quo',d:'healthy',v:656344.16},{s:'quo',d:'wonNI',v:84252.54},{s:'quo',d:'stale',v:259985.08}];
+
+var B1={},B2={};
+N1.forEach(function(n,i){B1[n.id]=n;n.i=i;});
+N2.forEach(function(n,i){B2[n.id]=n;n.i=i;});
+// Derive every node total from its links so the diagram cannot drift.
+N1.forEach(function(n){n.v=L.filter(function(k){return k.s===n.id;}).reduce(function(a,k){return a+k.v;},0);});
+N2.forEach(function(n){n.v=L.filter(function(k){return k.d===n.id;}).reduce(function(a,k){return a+k.v;},0);});
+var TOT=L.reduce(function(a,k){return a+k.v;},0);
+var TOP=56,FH=610,GAP=15,SC=(FH-5*GAP)/TOT;
+var y=TOP;
+N2.forEach(function(n){n.h=n.v*SC;n.y0=y;n.y1=y+n.h;y+=n.h+GAP;});
+var t1=TOT*SC, st=TOP+(FH-(t1+22))/2; y=st;
+N1.forEach(function(n){n.h=n.v*SC;n.y0=y;n.y1=y+n.h;y+=n.h+22;});
+L.sort(function(a,b){return B1[a.s].i-B1[b.s].i||B2[a.d].i-B2[b.d].i;});
+var o1={},o2={};
+L.forEach(function(k){
+ var a=B1[k.s],b=B2[k.d],h=k.v*SC;
+ if(o1[k.s]==null)o1[k.s]=a.y0;
+ if(o2[k.d]==null)o2[k.d]=b.y0;
+ k.sa=o1[k.s];k.sb=o1[k.s]+h;o1[k.s]+=h;
+ k.da=o2[k.d];k.db=o2[k.d]+h;o2[k.d]+=h;
+ k.c=b.c;
+});
+var X1=20,W1=120,X2=430,W2=90,XL=534;
+var svg=document.getElementById('sv'),cap=document.getElementById('cap');
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function ribbon(k){var x1=X1+W1,x2=X2,m=(x1+x2)/2;
+ return 'M'+x1+','+k.sa.toFixed(1)+'C'+m+','+k.sa.toFixed(1)+' '+m+','+k.da.toFixed(1)+' '+x2+','+k.da.toFixed(1)
+ +'L'+x2+','+k.db.toFixed(1)+'C'+m+','+k.db.toFixed(1)+' '+m+','+k.sb.toFixed(1)+' '+x1+','+k.sb.toFixed(1)+'Z';}
+function draw(hi){
+ var o='<text x="20" y="34" font-size="12" fill="var(--fg-3)">the two books</text>'
+      +'<text x="430" y="34" font-size="12" fill="var(--fg-3)">where the money actually is</text>';
+ L.forEach(function(k){
+  var on=!hi||hi===k.d||hi===k.s;
+  o+='<path d="'+ribbon(k)+'" fill="var(--'+k.c+')" fill-opacity="'+(on?(k.c==='ok'?0.20:0.40):0.06)+'" data-h="'+k.d+'"/>';
+ });
+ N1.forEach(function(n){
+  var on=!hi||hi===n.id||L.some(function(k){return k.s===n.id&&k.d===hi;});
+  var cy=(n.y0+n.y1)/2;
+  o+='<g data-h="'+n.id+'" style="cursor:pointer" opacity="'+(on?1:0.35)+'">'
+   +'<rect x="'+X1+'" y="'+n.y0.toFixed(1)+'" width="'+W1+'" height="'+n.h.toFixed(1)+'" rx="6" fill="var(--surface)" stroke="var(--line-2)"/>'
+   +'<text x="'+(X1+12)+'" y="'+(cy-12)+'" font-size="13" font-weight="600" fill="var(--fg)">'+esc(n.l[0])+'</text>'
+   +'<text x="'+(X1+12)+'" y="'+(cy+5)+'" font-size="12.5" fill="var(--fg)">'+esc(n.l[1])+'</text>'
+   +'<text x="'+(X1+12)+'" y="'+(cy+22)+'" font-size="12" fill="var(--fg-3)">'+esc(n.l[2])+'</text></g>';
+ });
+ N2.forEach(function(n){
+  var on=!hi||hi===n.id||L.some(function(k){return k.d===n.id&&k.s===hi;});
+  var cy=(n.y0+n.y1)/2;
+  o+='<g data-h="'+n.id+'" style="cursor:pointer" opacity="'+(on?1:0.35)+'">'
+   +'<rect x="'+X2+'" y="'+n.y0.toFixed(1)+'" width="'+W2+'" height="'+n.h.toFixed(1)+'" rx="4" fill="var(--'+n.c+')" fill-opacity="0.85" stroke="var(--'+n.c+')"/>'
+   +'<text x="'+XL+'" y="'+(cy-3)+'" font-size="13" fill="var(--fg)">'+esc(n.l1)+'</text>'
+   +'<text x="'+XL+'" y="'+(cy+14)+'" font-size="12.5" fill="var(--fg-3)">'+esc(n.l2)+'</text></g>';
+ });
+ svg.innerHTML=o;
+}
+svg.addEventListener('mouseover',function(e){
+ var g=e.target.closest('[data-h]'); if(!g) return;
+ var id=g.getAttribute('data-h'), n=B2[id]||B1[id];
+ if(n){draw(id);cap.textContent=n.cap;}
+});
+svg.addEventListener('mouseout',function(e){
+ if(e.target.closest('[data-h]')){draw(null);cap.textContent='Hover any band to see what is in it.';}
+});
+draw(null);
+var C=[{n:'invisible to their reports',v:654422,c:'bad'},
+       {n:'overdue they already track',v:518938,c:'warn'},
+       {n:'healthy',v:1429672,c:'ok'}];
+document.getElementById('cmp').innerHTML=C.map(function(x){
+ return '<div class="row"><span class="nm">'+x.n+'</span><span class="tr"><span class="fi" style="width:'
+  +(x.v/1429672*100).toFixed(1)+'%;background:var(--'+x.c+')"></span></span><span class="vl">$'
+  +x.v.toLocaleString('en-US')+'</span></div>';}).join('');
+</script>
+</body>
+</html>
